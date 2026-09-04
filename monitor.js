@@ -29,6 +29,13 @@ const server = http.createServer((req, res) => {
 
 server.listen(PORT, () => {
   console.log(`🚀 [Health-Check] HTTP Server listening on port ${PORT}`);
+  // Initial Boot Alert to Webhook
+  sendAlert(
+    '🚀 Monitor Service Started',
+    `The monitoring process has started successfully on port **${PORT}**.\nConnecting to Discord Gateway...`,
+    [],
+    0x3498DB // Blue
+  );
 });
 
 // 2. Webhook Notification Helper
@@ -51,13 +58,15 @@ async function sendAlert(title, description, fields = [], color = 0x5865F2) {
           fields: fields,
           color: color,
           timestamp: new Date().toISOString(),
-          footer: { text: 'Automated Activity Alert' }
+          footer: { text: 'Discord Activity Monitor • 24/7' }
         }]
       })
     });
 
     if (!response.ok) {
       console.error(`[Webhook Error] Discord responded with status: ${response.status}`);
+    } else {
+      console.log(`[Webhook Sent] ${title}`);
     }
   } catch (err) {
     console.error('[Webhook Network Error]', err.message);
@@ -141,10 +150,14 @@ function connectGateway() {
             console.log(`📡 [Ready] Monitoring ${guildCount} servers.`);
             
             sendAlert(
-              '🟢 Monitor Online',
-              `Activity monitor connected for **${user.username}**.\nWatching **${guildCount}** servers.`,
-              [],
-              0x57F287 // Green
+              '🟢 Bot Online & Monitoring Active!',
+              `Your Discord monitor is now connected and actively scanning.`,
+              [
+                { name: '👤 Account', value: `**${user.username}** (\`${user.id}\`)`, inline: true },
+                { name: '🌐 Servers Watched', value: `**${guildCount}** servers`, inline: true },
+                { name: '🔍 Monitored Keywords', value: KEYWORDS.length > 0 ? KEYWORDS.map(k => `\`${k}\``).join(', ') : 'None', inline: false }
+              ],
+              0x57F287 // Discord Green
             );
           }
 
