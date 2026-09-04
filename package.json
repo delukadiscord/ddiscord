@@ -1,0 +1,18 @@
+{
+  "name": "discord-activity-monitor",
+  "version": "1.0.0",
+  "description": "Discord personal activity and server monitor",
+  "main": "monitor.js",
+  "type": "module",
+  "scripts": {
+    "start": "node monitor.js",
+    "dev": "node --watch monitor.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "ws": "^8.18.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
