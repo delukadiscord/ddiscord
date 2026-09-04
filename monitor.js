@@ -3,8 +3,8 @@ import WebSocket from 'ws';
 import http from 'http';
 
 // Configuration
-const USER_TOKEN = process.env.USER_TOKEN?.trim();
-const WEBHOOK_URL = process.env.WEBHOOK_URL?.trim();
+const USER_TOKEN = process.env.USER_TOKEN?.trim().replace(/^["']|["']$/g, '');
+const WEBHOOK_URL = process.env.WEBHOOK_URL?.trim().replace(/^["']|["']$/g, '');
 const PORT = process.env.PORT || 3000;
 const KEYWORDS = (process.env.ALERT_KEYWORDS || 'urgent,alert,important')
   .split(',')
@@ -13,7 +13,12 @@ const KEYWORDS = (process.env.ALERT_KEYWORDS || 'urgent,alert,important')
 
 if (!USER_TOKEN) {
   console.error('❌ ERROR: USER_TOKEN is missing in your .env file!');
-  console.error('Please create or update your .env file with your Discord user token.');
+}
+
+if (!WEBHOOK_URL) {
+  console.error('❌ ERROR: WEBHOOK_URL is missing in your .env file!');
+} else {
+  console.log(`🔗 [Webhook Configured] URL prefix: ${WEBHOOK_URL.substring(0, 35)}...`);
 }
 
 // 1. Lightweight HTTP server for Cloud Hosting Health Checks (Koyeb / Render / Fly)
@@ -40,36 +45,47 @@ server.listen(PORT, () => {
 
 // 2. Webhook Notification Helper
 async function sendAlert(title, description, fields = [], color = 0x5865F2) {
-  if (!WEBHOOK_URL || WEBHOOK_URL.includes('YOUR_DISCORD_WEBHOOK_URL')) {
-    console.log(`[Alert - No Webhook Configured] ${title} -> ${description}`);
+  if (!WEBHOOK_URL || WEBHOOK_URL.includes('YOUR_DISCORD_WEBHOOK_URL') || WEBHOOK_URL.includes('your/webhook/url')) {
+    console.log(`⚠️ [Alert Skipped - No Webhook URL Configured] ${title}`);
     return;
   }
 
   try {
+    const embed = {
+      title: title,
+      description: description,
+      color: color,
+      timestamp: new Date().toISOString(),
+      footer: { text: 'Activity Sentinel • 24/7' }
+    };
+
+    // Discord API returns 400 if fields is an empty array []
+    if (Array.isArray(fields) && fields.length > 0) {
+      embed.fields = fields;
+    }
+
+    const payload = {
+      username: 'Activity Sentinel',
+      content: `**${title}**\n${description}`, // Fallback text in case embeds are suppressed
+      embeds: [embed]
+    };
+
+    console.log(`📡 [Webhook] Sending "${title}" to Discord...`);
+
     const response = await fetch(WEBHOOK_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        username: 'Discord Activity Monitor',
-        avatar_url: 'https://cdn.discordapp.com/embed/avatars/0.png',
-        embeds: [{
-          title: title,
-          description: description,
-          fields: fields,
-          color: color,
-          timestamp: new Date().toISOString(),
-          footer: { text: 'Discord Activity Monitor • 24/7' }
-        }]
-      })
+      body: JSON.stringify(payload)
     });
 
     if (!response.ok) {
-      console.error(`[Webhook Error] Discord responded with status: ${response.status}`);
+      const errorBody = await response.text();
+      console.error(`❌ [Webhook Error] HTTP ${response.status}: ${errorBody}`);
     } else {
-      console.log(`[Webhook Sent] ${title}`);
+      console.log(`✅ [Webhook Success] "${title}" delivered (HTTP ${response.status})`);
     }
   } catch (err) {
-    console.error('[Webhook Network Error]', err.message);
+    console.error('❌ [Webhook Network Error]', err.message);
   }
 }
 
